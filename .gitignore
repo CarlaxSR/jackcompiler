@@ -1,0 +1,8 @@
+*.class
+bin/
+out/
+.idea
+*.iml
+.vscode/
+*.xml
+!tests/*T.xml
