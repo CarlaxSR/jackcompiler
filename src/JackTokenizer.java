@@ -37,10 +37,65 @@ private static final Set<Character> SYMBOLS = new HashSet<>(Arrays.asList(
         tokenize(content);
     }
 
-    private void tokenize(String source) 
-    {
-        // Implementação nas próximas etapas
+private void tokenize(String source) {
+    String cleanSource = removeComments(source);
+    int n = cleanSource.length();
+    int i = 0;
+
+    while (i < n) {
+        char ch = cleanSource.charAt(i);
+
+        // Ignora caracteres em branco
+        if (Character.isWhitespace(ch)) {
+            i++;
+            continue;
+        }
+
+        // Trata Símbolos
+        if (SYMBOLS.contains(ch)) {
+            tokens.add(String.valueOf(ch));
+            i++;
+            continue;
+        }
+
+        // Trata String Constants ("...")
+        if (ch == '"') {
+            StringBuilder sb = new StringBuilder();
+            i++; // pula a aspa inicial
+            while (i < n && cleanSource.charAt(i) != '"') {
+                sb.append(cleanSource.charAt(i));
+                i++;
+            }
+            i++; // pula a aspa final
+            tokens.add("\"" + sb.toString() + "\"");
+            continue;
+        }
+
+        // Trata Inteiros
+        if (Character.isDigit(ch)) {
+            StringBuilder sb = new StringBuilder();
+            while (i < n && Character.isDigit(cleanSource.charAt(i))) {
+                sb.append(cleanSource.charAt(i));
+                i++;
+            }
+            tokens.add(sb.toString());
+            continue;
+        }
+
+        // Trata Identificadores e Palavras-chave
+        if (Character.isLetter(ch) || ch == '_') {
+            StringBuilder sb = new StringBuilder();
+            while (i < n && (Character.isLetterOrDigit(cleanSource.charAt(i)) || cleanSource.charAt(i) == '_')) {
+                sb.append(cleanSource.charAt(i));
+                i++;
+            }
+            tokens.add(sb.toString());
+            continue;
+        }
+
+        i++;
     }
+}
 
     public boolean hasMoreTokens() 
     {
@@ -53,16 +108,16 @@ private static final Set<Character> SYMBOLS = new HashSet<>(Arrays.asList(
         {
             currentTokenIndex++;
             currentToken = tokens.get(currentTokenIndex);
-        if (currentToken.starsWith("\"") && currentToken.endsWith("\"")) {
-            currentTokenType = TokenType.STRRING_CONST;
+        if (currentToken.startsWith("\"") && currentToken.endsWith("\"")) {
+            currentTokenType = TokenType.STRING_CONST;
         } 
-        else if (SYMBOLS.contains(currentToken.charAt(0))) && currentToken.lenght() == 1) {
+        else if (SYMBOLS.contains(currentToken.charAt(0)) && currentToken.length() == 1) {
             currentTokenType = TokenType.SYMBOL;
         } 
-        else if (curentToken.matches("\\d+")) {
+        else if (currentToken.matches("\\d+")) {
             currentTokenType = TokenType.INT_CONST;
         }
-        else if (KEYWORDS.contains(curentToken)){
+        else if (KEYWORDS.contains(currentToken)){
             currentTokenType = TokenType.KEYWORD;
         }
         else{
@@ -78,7 +133,7 @@ private static final Set<Character> SYMBOLS = new HashSet<>(Arrays.asList(
     }
 
     public char symbol(){
-        return curentToken.charAt(0);
+        return currentToken.charAt(0);
     }
     public String identifier(){
         return currentToken;
@@ -87,7 +142,7 @@ private static final Set<Character> SYMBOLS = new HashSet<>(Arrays.asList(
         return Integer.parseInt(currentToken);
     }
     public String stringVal(){
-        return currentToken.substring(1, currentToken.lenght() - 1);
+        return currentToken.substring(1, currentToken.length() - 1);
     }
     
     private String removeComments(String source) {
@@ -146,9 +201,4 @@ private static final Set<Character> SYMBOLS = new HashSet<>(Arrays.asList(
         return clean.toString();
     }
     
-}
-
-    }
-    return clean.toString();
-
 }
