@@ -33,7 +33,41 @@ public class JackTokenizer {
         if (hasMoreTokens()) {
             currentTokenIndex++;
             currentToken = tokens.get(currentTokenIndex);
+        if (currentToken.starsWith("\"") && currentToken.endsWith("\"")) {
+            currentTokenType = TokenType.STRRING_CONST;
+        } 
+        else if (SYMBOLS.contains(currentToken.charAt(0))) && currentToken.lenght() == 1) {
+            currentTokenType = TokenType.SYMBOL;
+        } 
+        else if (curentToken.matches("\\d+")) {
+            currentTokenType = TokenType.INT_CONST;
         }
+        else if (KEYWORDS.contains(curentToken)){
+            currentTokenType = TokenType.KEYWORD;
+        }
+        else{
+            currentTokenType = TokenType.IDENTIFIER ;
+        }
+        }
+    }
+    public TokenType tokenType() {
+        return currentTokenType;
+    }
+    public String keyWord() {
+        return currentToken;
+    }
+
+    public char symbol(){
+        return curentToken.charAt(0);
+    }
+    public String identifier(){
+        return currentToken;
+    }
+    public int intVal(){
+        return Integer.parseInt(currentToken);
+    }
+    public String stringVal(){
+        return currentToken.substring(1, currentToken.lenght() - 1);
     }
     
     private String removeComments(String source) {
@@ -74,4 +108,5 @@ public class JackTokenizer {
             }
     }
     return clean.toString();
+
 }
