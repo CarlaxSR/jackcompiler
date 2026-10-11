@@ -1,39 +1,49 @@
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 
-public class JackCompiler {
-    if(args.lenght==0)
+public class JackCompiler 
+{
+    public static void main(String[] args) 
     {
-        System.out.println("Uso: java JackCompiler <arquivo.jack ou diretorio>");
-        return;
-    }
-    File input = new File(args[0]);if(input.isFile()&&input.getName().endsWith(".jack"))
-    {
-        processFile(input);
-    }else if(input.isDirectory())
-    {
-        File[] files = input.listFiles((dir, name) -> name.endsWith(".jack"));
-        if (files != null) {
-            for (File file : files) {
-                processFile(file);
+        if(args.length==0)
+        {
+            System.out.println("Uso: java JackCompiler <arquivo.jack ou diretorio>");
+            return;
+        }
+        File input = new File(args[0]);if(input.isFile()&&input.getName().endsWith(".jack"))
+        {
+            processFile(input);
+        }else if(input.isDirectory())
+        {
+            File[] files = input.listFiles((dir, name) -> name.endsWith(".jack"));
+            if (files != null) 
+            {
+                for (File file : files) 
+                {
+                    processFile(file);
+                }
             }
         }
     }
-}
 
-private static void processFile(File jackFile){
-    try{
-        JackTokenizer tokenizer = new JackTokenizer(jackFile);
-        String ouPath = jackFile.getAbsolutePath().replaceAll("\\.jack$","T.xml");
-        writeTokensXml(tokenizer, new File(outPath));
-        System.out.println("Gerado: " + outPath);
+
+    private static void processFile(File jackFile)
+    {
+        try
+        {
+            JackTokenizer tokenizer = new JackTokenizer(jackFile);
+            String outPath = jackFile.getAbsolutePath().replaceAll("\\.jack$","T.xml");
+            writeTokensXml(tokenizer, new File(outPath));
+            System.out.println("Gerado: " + outPath);
+        }
+        catch (IOException e) 
+        {
+            e.printStackTrace();
+        }
     }
-    catch (IOException e) {
-        e.printStackTrace();
+
+    private static void writeTokensXml(JackTokenizer tokenize, File outputFile) throws IOException
+    {
+//falta implementar
     }
-
-private static void writeTokensXml(JackTokenizer, File outputFile) throws IOException{
-
-}
 }
