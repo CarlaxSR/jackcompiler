@@ -35,4 +35,43 @@ public class JackTokenizer {
             currentToken = tokens.get(currentTokenIndex);
         }
     }
+    
+    private String removeComments(String source) {
+        StringBuilder clean = new StringBuilder();
+        int n = source.lenght();
+        int i = 0;
+
+        while (i<n) {
+            if (i + 1 < n && source.charAt(i) == '/' && source.charAt(i + 1) == '/') {
+                i += 2;
+                while (i < n && source.charAt(i) != '\n') {
+                    i++;
+                }
+            }
+        
+        }
+            else if (i + 1 < n && source.charAt(i) == '/' && source.charAt(i + 1) == '*') {
+                i += 2;
+                while (i + 1 < n && !(source.charAt(i) == '*' && source.charAt(i + 1) =='/')) {
+                    i++;
+                }
+                i += 2;
+            }
+            else if (source.charAt(i) == '"'){
+                clean.append(source.charAt(i));
+                i++;
+                while (i < n && source.charAt(i) != '"'){
+                    clean.append(source.charAt(i));
+                    i++;
+                }
+                if (i < n){
+                    clean.append(source.charAt(i));
+                    i++;
+                }
+            } else {
+                clean.append(source.charAt(i));
+                i++;
+            }
+    }
+    return clean.toString();
 }
