@@ -186,4 +186,31 @@ public class JackTokenizer {
         return clean.toString();
     }
 
+    public String getCurrentToken() {
+        return currentToken;
+    }
+
+    public String peekToken() {
+        if (currentTokenIndex + 1 < tokens.size()) {
+            return tokens.get(currentTokenIndex + 1);
+        }
+        return null;
+    }
+
+    public TokenType peekTokenType() {
+        if (currentTokenIndex + 1 < tokens.size()) {
+            String next = tokens.get(currentTokenIndex + 1);
+            if (next.startsWith("\"") && next.endsWith("\""))
+                return TokenType.STRING_CONST;
+            if (SYMBOLS.contains(next.charAt(0)) && next.length() == 1)
+                return TokenType.SYMBOL;
+            if (next.matches("\\d+"))
+                return TokenType.INT_CONST;
+            if (KEYWORDS.contains(next))
+                return TokenType.KEYWORD;
+            return TokenType.IDENTIFIER;
+        }
+        return null;
+    }
+
 }
