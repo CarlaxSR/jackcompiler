@@ -223,9 +223,67 @@ public class CompilationEngine
         closeTag("varDec");
     }
 
-    public void compileStatements() throws IOException 
-    {
+    public void compileStatements() throws IOException {
         openTag("statements");
+        while (tokenizer.tokenType() == TokenType.KEYWORD) {
+            String kw = tokenizer.keyWord();
+            switch (kw) {
+                case "let" -> compileLet();
+                case "do" -> compileDo();
+                case "return" -> compileReturn();
+                case "if" -> compileIf();       // implementar no próximo commit
+                case "while" -> compileWhile(); // implementar no próximo commit
+                default -> {
+                    closeTag("statements");
+                    return;
+                }
+            }
+        }
         closeTag("statements");
     }
+
+    public void compileLet() throws IOException {
+        openTag("letStatement");
+        consume("let");
+
+        writeCurrentToken(); 
+        tokenizer.advance();
+
+        if (tokenizer.getCurrentToken().equals("[")) {
+            consume("[");
+            compileExpression(); 
+            consume("]");
+        }
+
+        consume("=");
+        compileExpression();
+        consume(";");
+        closeTag("letStatement");
+    }
+
+    public void compileDo() throws IOException {
+        openTag("doStatement");
+        consume("do");
+        compileSubroutineCall();
+        consume(";");
+        closeTag("doStatement");
+    }
+
+    public void compileReturn() throws IOException {
+        openTag("returnStatement");
+        consume("return");
+
+        if (!tokenizer.getCurrentToken().equals(";")) {
+            compileExpression();
+        }
+
+        consume(";");
+        closeTag("returnStatement");
+    }
+
+    // Placeholders temporários
+    public void compileIf() throws IOException {}
+    public void compileWhile() throws IOException {}
+    public void compileExpression() throws IOException {}
+    private void compileSubroutineCall() throws IOException {}
 }
