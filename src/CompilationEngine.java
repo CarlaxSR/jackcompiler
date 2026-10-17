@@ -223,11 +223,14 @@ public class CompilationEngine
         closeTag("varDec");
     }
 
-    public void compileStatements() throws IOException {
+    public void compileStatements() throws IOException 
+    {
         openTag("statements");
-        while (tokenizer.tokenType() == TokenType.KEYWORD) {
+        while (tokenizer.tokenType() == TokenType.KEYWORD) 
+        {
             String kw = tokenizer.keyWord();
-            switch (kw) {
+            switch (kw) 
+            {
                 case "let" -> compileLet();
                 case "do" -> compileDo();
                 case "return" -> compileReturn();
@@ -242,14 +245,16 @@ public class CompilationEngine
         closeTag("statements");
     }
 
-    public void compileLet() throws IOException {
+    public void compileLet() throws IOException 
+    {
         openTag("letStatement");
         consume("let");
 
         writeCurrentToken(); 
         tokenizer.advance();
 
-        if (tokenizer.getCurrentToken().equals("[")) {
+        if (tokenizer.getCurrentToken().equals("[")) 
+        {
             consume("[");
             compileExpression(); 
             consume("]");
@@ -261,7 +266,8 @@ public class CompilationEngine
         closeTag("letStatement");
     }
 
-    public void compileDo() throws IOException {
+    public void compileDo() throws IOException 
+    {
         openTag("doStatement");
         consume("do");
         compileSubroutineCall();
@@ -269,11 +275,13 @@ public class CompilationEngine
         closeTag("doStatement");
     }
 
-    public void compileReturn() throws IOException {
+    public void compileReturn() throws IOException 
+    {
         openTag("returnStatement");
         consume("return");
 
-        if (!tokenizer.getCurrentToken().equals(";")) {
+        if (!tokenizer.getCurrentToken().equals(";")) 
+        {
             compileExpression();
         }
 
@@ -281,9 +289,134 @@ public class CompilationEngine
         closeTag("returnStatement");
     }
 
-    // Placeholders temporários
-    public void compileIf() throws IOException {}
-    public void compileWhile() throws IOException {}
-    public void compileExpression() throws IOException {}
-    private void compileSubroutineCall() throws IOException {}
+    public void compileIf() throws IOException 
+    {
+        openTag("ifStatement");
+        consume("if");
+        consume("(");
+        compileExpression();
+        consume(")");
+
+        consume("{");
+        compileStatements();
+        consume("}");
+
+        if (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("else")) 
+        {
+            consume("else");
+            consume("{");
+            compileStatements();
+            consume("}");
+        }
+        closeTag("ifStatement");
+    }
+
+    public void compileWhile() throws IOException 
+    {
+        openTag("whileStatement");
+        consume("while");
+        consume("(");
+        compileExpression();
+        consume(")");
+
+        consume("{");
+        compileStatements();
+        consume("}");
+        closeTag("whileStatement");
+    }
+
+    public void compileExpression() throws IOException 
+    {
+        openTag("expression");
+        compileTerm();
+
+        while (tokenizer.tokenType() == TokenType.SYMBOL && OP_SYMBOLS.contains(tokenizer.getCurrentToken())) 
+        {
+            writeCurrentToken(); 
+            tokenizer.advance();
+            compileTerm();
+        }
+        closeTag("expression");
+    }
+
+    public void compileTerm() throws IOException 
+    {
+        openTag("term");
+
+        TokenType type = tokenizer.tokenType();
+        String token = tokenizer.getCurrentToken();
+
+        if (type == TokenType.INT_CONST || type == TokenType.STRING_CONST) 
+        {
+            writeCurrentToken();
+            tokenizer.advance();
+        } else if (type == TokenType.KEYWORD && 
+                (token.equals("true") || token.equals("false") || token.equals("null") || token.equals("this"))) 
+                {
+            writeCurrentToken();
+            tokenizer.advance();
+        } else if (token.equals("(")) 
+        {
+            consume("(");
+            compileExpression();
+            consume(")");
+        } else if (type == TokenType.SYMBOL && UNARY_OPS.contains(tokenizer.symbol())) 
+        {
+            writeCurrentToken(); 
+            tokenizer.advance();
+            compileTerm();
+        } else if (type == TokenType.IDENTIFIER) 
+        {
+            String next = tokenizer.peekToken();
+            if ("[".equals(next)) 
+            { 
+                writeCurrentToken();
+                tokenizer.advance();
+                consume("[");
+                compileExpression();
+                consume("]");
+            } else if ("(".equals(next) || ".".equals(next)) 
+            { 
+                compileSubroutineCall();
+            } else 
+            { 
+                writeCurrentToken();
+                tokenizer.advance();
+            }
+        }
+
+        closeTag("term");
+    }
+
+    private void compileSubroutineCall() throws IOException 
+    {
+        writeCurrentToken(); 
+        tokenizer.advance();
+
+        if (tokenizer.getCurrentToken().equals(".")) 
+        {
+            consume(".");
+            writeCurrentToken(); 
+            tokenizer.advance();
+        }
+
+        consume("(");
+        compileExpressionList();
+        consume(")");
+    }
+
+    public void compileExpressionList() throws IOException 
+    {
+        openTag("expressionList");
+        if (!tokenizer.getCurrentToken().equals(")")) 
+        {
+            compileExpression();
+            while (tokenizer.getCurrentToken().equals(",")) 
+            {
+                consume(",");
+                compileExpression();
+            }
+        }
+        closeTag("expressionList");
+    }
 }
