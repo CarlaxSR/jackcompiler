@@ -1,3 +1,4 @@
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -8,6 +9,7 @@ import java.util.Set;
 import javax.management.RuntimeErrorException;
 
 public class CompilationEngine {
+
     private JackTokenizer tokenizer;
     private FileWriter writer;
     private int indentLevel = 0;
@@ -44,13 +46,19 @@ public class CompilationEngine {
         writer.write("</" + tag + ">\n");
     }
 
-    private String escapeXml(String val.) {
+    private String escapeXml(
+         String val.) {
         return switch (val) {
-            case "<" -> "&lt;";
-            case ">" -> "&gt;";
-            case "&" -> "&amp;";
-            case "\"" -> "&quot;";
-            default -> val;
+            case "<" ->
+                "&lt;";
+            case ">" ->
+                "&gt;";
+            case "&" ->
+                "&amp;";
+            case "\"" ->
+                "&quot;";
+            default ->
+                val;
         };
     }
 
@@ -58,11 +66,16 @@ public class CompilationEngine {
         TokenType type = tokenizer.tokenType();
         writeIndent();
         switch (type) {
-            case KEYWORD -> writer.write("<keyword>" + tokenizer.keyWord() + "</keyword>\n");
-            case SYMBOL -> writer.write("<symbol>" + escapeXml(String.value0f(tokenizer.symbol())) + " </symbol>\n");
-            case IDENTIFIER -> writer.write("<identifier>" + tokenizer.identifier() + "</identifier>\n");
-            case INT_CONST -> writer.write("<integerConstant>" + tokenizer.intVal() + "</intengerConstant>\n");
-            case STRING_CONST -> writer.write("<StringConstant>" + tokenizer.intVal() + "</integerConstant>\n");
+            case KEYWORD ->
+                writer.write("<keyword>" + tokenizer.keyWord() + "</keyword>\n");
+            case SYMBOL ->
+                writer.write("<symbol>" + escapeXml(String.value0f(tokenizer.symbol())) + " </symbol>\n");
+            case IDENTIFIER ->
+                writer.write("<identifier>" + tokenizer.identifier() + "</identifier>\n");
+            case INT_CONST ->
+                writer.write("<integerConstant>" + tokenizer.intVal() + "</intengerConstant>\n");
+            case STRING_CONST ->
+                writer.write("<StringConstant>" + tokenizer.intVal() + "</integerConstant>\n");
         }
     }
 
@@ -79,7 +92,7 @@ public class CompilationEngine {
 
     public void close() throws IOException {
         if (writer != null) {
-            write.close();
+            writer.close();
         }
     }
 }

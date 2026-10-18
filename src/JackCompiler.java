@@ -5,30 +5,43 @@ import java.io.IOException;
 public class JackCompiler {
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("Uso: java JackCompiler <arquivo.jack ou diretorio>");
+            System.out.println("Uso: java JackCompiler <arquivo.jack ou diretorio> [saida.xml]");
             return;
         }
         File input = new File(args[0]);
-        if (input.isFile() && input.getName().endsWith(".jack")) {
+        
+        if (input.isFile() && input.getName().endsWith(".jack")) 
+        {
+            File output = (args.lenght >=2)
+            ? new File(args[1])
+            : new File(input.getAbsolutePath().replaceAll("\\.jack$", "P.xml"));
             processFile(input);
-        } else if (input.isDirectory()) {
+        } 
+        
+        else if (input.isDirectory()) 
+        {
             File[] files = input.listFiles((dir, name) -> name.endsWith(".jack"));
-            if (files != null) {
-                for (File file : files) {
+            if (files != null) 
+            {
+                for (File file : files) 
+                {
+                    File output = new File(file.getAbsolutePath().replaceAll("\\.jack$", "P.xml"));
                     processFile(file);
                 }
             }
         }
     }
 
-    private static void processFile(File jackFile) {
+    private static void processFile(File jackFile) 
+    {
         try {
             JackTokenizer tokenizer = new JackTokenizer(jackFile);
-            String outPath = jackFile.getAbsolutePath().replaceAll("\\.jack$", "T.xml");
-            writeTokensXml(tokenizer, new File(outPath));
-            System.out.println("Gerado: " + outPath);
-        } catch (IOException e) {
-            e.printStackTrace();
+            CompilationEngine engine = new CompilationEngine(tokenizer, outputFile);
+            engine.compileClass();
+            System.out.println("Parser gerado com sucesso: " + outputFile.getAbsolutePath());
+        } 
+        catch (IOException e) {
+            System.err.println("Erro ao processar " + jackFile.getName() + ": " + e.getMessage());
         }
     }
 
