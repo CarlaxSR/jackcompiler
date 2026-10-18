@@ -5,12 +5,12 @@ import java.util.List;
 
 public class SytanxTest 
 {
-        public static void main(String[]args) throws IOException
+        public static void main(String[] args) throws IOException
         {
-            String[] testFiles = {"Square","SquareGame","Main"};
+            String[] testFiles = {"TesteCustomizado", "TesteCalculadora", "TesteVetor"};
             boolean allPassed = true;
 
-            for (String[] testFiles)
+            for (String base : testFiles)
             {
                 File jack = new File("tests/" + base + ".jack");
                 File generated = new File("tests/" + base + "P.xml");
@@ -18,30 +18,31 @@ public class SytanxTest
 
                 if (!jack.exists() || !official.exists())
                 {
-                    System.out.println("⚠️ Pulando teste " + base + "(arquivos oficiais ausentes em tests/)");
+                    System.out.println("⚠️ Pulando teste " + base + " (arquivos oficiais ausentes em tests/)");
                     continue;
                 }
-            }
-            JackTokenizer tokenizer = new JackTokenizer(jack);
-            CompilationEngine engine = new CompilationEngine(tokenizer, generated);
-            engine.compileClass();
 
-            String genContent = normalize(Files.readAllLines(generated.toPath()));
-            String offContent = normalize(Files.readAllLines(official.toPath));
+                JackTokenizer tokenizer = new JackTokenizer(jack);
+                CompilationEngine engine = new CompilationEngine(tokenizer, generated);
+                engine.compileClass();
 
-            if (genContent.equals(offContent)) 
-            {
-                System.out.println("✅ " + base + ": Árvore sintática 100% idêntica!");
+                String genContent = normalize(Files.readAllLines(generated.toPath()));
+                String offContent = normalize(Files.readAllLines(official.toPath()));
+
+                if (genContent.equals(offContent)) 
+                {
+                    System.out.println("✅ " + base + ": Árvore sintática 100% idêntica!");
+                }
+                else
+                {
+                    System.err.println("❌ " + base + ": Discrepância estrutural encontrada.");
+                    allPassed = false;
+                }
             }
-            else
+            if (allPassed)
             {
-                System.err.println("❌ " + base + ": Discrepância estrutural encontrada.");
-                allPassed = false;
+                System.out.println("\n🎉 Todos os testes disponíveis passaram com sucesso!");
             }
-        } 
-        if (allPassed)
-        {
-            System.out.println("\n🎉 Todos os testes disponíveis passaram com sucesso!");
         }
 
 

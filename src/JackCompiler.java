@@ -12,10 +12,10 @@ public class JackCompiler {
         
         if (input.isFile() && input.getName().endsWith(".jack")) 
         {
-            File output = (args.lenght >=2)
+            File output = (args.length >= 2)
             ? new File(args[1])
             : new File(input.getAbsolutePath().replaceAll("\\.jack$", "P.xml"));
-            processFile(input);
+            processFile(input, output);
         } 
         
         else if (input.isDirectory()) 
@@ -26,13 +26,13 @@ public class JackCompiler {
                 for (File file : files) 
                 {
                     File output = new File(file.getAbsolutePath().replaceAll("\\.jack$", "P.xml"));
-                    processFile(file);
+                    processFile(file, output);
                 }
             }
         }
     }
 
-    private static void processFile(File jackFile) 
+    private static void processFile(File jackFile, File outputFile) 
     {
         try {
             JackTokenizer tokenizer = new JackTokenizer(jackFile);

@@ -13,11 +13,11 @@ public class CompilationEngine
     private int indentLevel = 0;
 
     private static final Set<String> OP_SYMBOLS = new HashSet<>(Arrays.asList(
-            "+", "-", "/", "&", "|", "<", ">", "="));
+            "+", "-", "*", "/", "&", "|", "<", ">", "="));
 
     private static final Set<Character> UNARY_OPS = new HashSet<>(Arrays.asList('-', '~'));
 
-    private CompilationEngine(JackTokenizer tokenizer, File outputFile) throws IOException 
+    public CompilationEngine(JackTokenizer tokenizer, File outputFile) throws IOException 
     {
         this.tokenizer = tokenizer;
         this.writer = new FileWriter(outputFile);
@@ -32,7 +32,7 @@ public class CompilationEngine
     {
         for (int i = 0; i < indentLevel; i++) 
         {
-            writer.write(" ");
+            writer.write("  ");
         }
     }
 
@@ -68,11 +68,11 @@ public class CompilationEngine
         writeIndent();
         switch (type) 
         {
-            case KEYWORD -> writer.write("<keyword>" + tokenizer.keyWord() + "</keyword>\n");
-            case SYMBOL -> writer.write("<symbol>" + escapeXml(String.valueOf(tokenizer.symbol())) + " </symbol>\n");
-            case IDENTIFIER -> writer.write("<identifier>" + tokenizer.identifier() + "</identifier>\n");
-            case INT_CONST -> writer.write("<integerConstant>" + tokenizer.intVal() + "</intengerConstant>\n");
-            case STRING_CONST -> writer.write("<StringConstant>" + tokenizer.intVal() + "</integerConstant>\n");
+            case KEYWORD -> writer.write("<keyword> " + tokenizer.keyWord() + " </keyword>\n");
+            case SYMBOL -> writer.write("<symbol> " + escapeXml(String.valueOf(tokenizer.symbol())) + " </symbol>\n");
+            case IDENTIFIER -> writer.write("<identifier> " + tokenizer.identifier() + " </identifier>\n");
+            case INT_CONST -> writer.write("<integerConstant> " + tokenizer.intVal() + " </integerConstant>\n");
+            case STRING_CONST -> writer.write("<stringConstant> " + tokenizer.stringVal() + " </stringConstant>\n");
         }
     }
 
@@ -81,7 +81,7 @@ public class CompilationEngine
         if (!tokenizer.getCurrentToken().equals(expected)) 
         {
             throw new RuntimeException(
-                    "Errros Sintático: Esperava " + expected + "', mas recebeu'" + tokenizer.getCurrentToken() + "'");
+                    "Erro Sintático: Esperava '" + expected + "', mas recebeu '" + tokenizer.getCurrentToken() + "'");
         }
         writeCurrentToken();
         if (tokenizer.hasMoreTokens()) 
