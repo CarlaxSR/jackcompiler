@@ -13,6 +13,8 @@ public class CompilationEngine
     private SymbolTable symbolTable;
     private String currentClassName;
     private int labelIndex = 0;
+    private FileWriter writer;
+    private int indentLevel = 0;
 
     private static final Set<String> OP_SYMBOLS = new HashSet<>(Arrays.asList(
             "+", "-", "*", "/", "&", "|", "<", ">", "="));
@@ -22,7 +24,7 @@ public class CompilationEngine
     public CompilationEngine(JackTokenizer tokenizer, File outputFile) throws IOException 
     {
         this.tokenizer = tokenizer;
-        this.writer = new VMWriter(outputFile);
+        this.vmWriter = new VMWriter(outputFile);
         this.symbolTable = new SymbolTable();
 
         if (tokenizer.hasMoreTokens()) 
@@ -33,6 +35,7 @@ public class CompilationEngine
 
     private void writeIndent() throws IOException 
     {
+        if (writer == null) return;
         for (int i = 0; i < indentLevel; i++) 
         {
             writer.write("  ");
@@ -41,6 +44,7 @@ public class CompilationEngine
 
     private void openTag(String tag) throws IOException 
     {
+        if (writer == null) return;
         writeIndent();
         writer.write("<" + tag + ">\n");
         indentLevel++;
@@ -48,6 +52,7 @@ public class CompilationEngine
 
     private void closeTag(String tag) throws IOException 
     {
+        if (writer == null) return;
         indentLevel--;
         writeIndent();
         writer.write("</" + tag + ">\n");
@@ -67,6 +72,7 @@ public class CompilationEngine
 
     private void writeCurrentToken() throws IOException 
     {
+        if (writer == null) return;
         TokenType type = tokenizer.tokenType();
         writeIndent();
         switch (type) 
@@ -95,6 +101,10 @@ public class CompilationEngine
 
     public void close() throws IOException 
     {
+        if (vmWriter != null) 
+        {
+            vmWriter.close();
+        }
         if (writer != null) 
         {
             writer.close();
@@ -147,25 +157,6 @@ public class CompilationEngine
             tokenizer.advance();
         }
         tokenizer.advance(); // consome ';'
-        openTag("classVarDec");
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        while (tokenizer.getCurrentToken().equals(",")) 
-        {
-            consume(",");
-            writeCurrentToken(); 
-            tokenizer.advance();
-        }
-
-        consume(";");
-        closeTag("classVarDec");
     }
 
     public void compileSubroutine() throws IOException 
@@ -268,23 +259,32 @@ public class CompilationEngine
 
     public void compileLet() throws IOException 
     {
-        openTag("letStatement");
-        consume("let");
-
-        writeCurrentToken(); 
+        tokenizer.advance(); 
+        String varName = tokenizer.identifier();
         tokenizer.advance();
 
-        if (tokenizer.getCurrentToken().equals("[")) 
-        {
-            consume("[");
-            compileExpression(); 
-            consume("]");
+        boolean isArray = false;
+        if (tokenizer.getCurrentToken().equals("[")) {
+            isArray = true;
+            tokenizer.advance(); 
+            compileExpression();
+            tokenizer.advance(); 
+            vmWriter.writePush(getSegment(symbolTable.kindOf(varName)), symbolTable.indexOf(varName));
+            vmWriter.writeArithmetic(VMWriter.Command.ADD);
         }
 
-        consume("=");
+        tokenizer.advance(); 
         compileExpression();
-        consume(";");
-        closeTag("letStatement");
+        tokenizer.advance(); 
+
+        if (isArray) {
+            vmWriter.writePop(VMWriter.Segment.TEMP, 0);
+            vmWriter.writePop(VMWriter.Segment.POINTER, 1);
+            vmWriter.writePush(VMWriter.Segment.TEMP, 0);
+            vmWriter.writePop(VMWriter.Segment.THAT, 0);
+        } else {
+            vmWriter.writePop(getSegment(symbolTable.kindOf(varName)), symbolTable.indexOf(varName));
+        }
     }
 
     public void compileDo() throws IOException 
@@ -298,66 +298,90 @@ public class CompilationEngine
 
     public void compileReturn() throws IOException 
     {
-        openTag("returnStatement");
-        consume("return");
-
-        if (!tokenizer.getCurrentToken().equals(";")) 
-        {
+        tokenizer.advance(); 
+        if (!tokenizer.getCurrentToken().equals(";")) {
             compileExpression();
+        } else {
+            vmWriter.writePush(VMWriter.Segment.CONST, 0);
         }
-
-        consume(";");
-        closeTag("returnStatement");
+        tokenizer.advance(); 
+        vmWriter.writeReturn();
     }
 
     public void compileIf() throws IOException 
     {
-        openTag("ifStatement");
-        consume("if");
-        consume("(");
+        String labelTrue = newLabel("IF_TRUE");
+        String labelFalse = newLabel("IF_FALSE");
+        String labelEnd = newLabel("IF_END");
+
+        tokenizer.advance(); 
+        tokenizer.advance(); 
         compileExpression();
-        consume(")");
+        tokenizer.advance(); 
 
-        consume("{");
+        vmWriter.writeIf(labelTrue);
+        vmWriter.writeGoto(labelFalse);
+        vmWriter.writeLabel(labelTrue);
+
+        tokenizer.advance(); 
         compileStatements();
-        consume("}");
+        tokenizer.advance(); 
 
-        if (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("else")) 
-        {
-            consume("else");
-            consume("{");
+        if (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("else")) {
+            vmWriter.writeGoto(labelEnd);
+            vmWriter.writeLabel(labelFalse);
+            tokenizer.advance(); 
+            tokenizer.advance(); 
             compileStatements();
-            consume("}");
+            tokenizer.advance(); 
+            vmWriter.writeLabel(labelEnd);
+        } else {
+            vmWriter.writeLabel(labelFalse);
         }
-        closeTag("ifStatement");
     }
 
     public void compileWhile() throws IOException 
     {
-        openTag("whileStatement");
-        consume("while");
-        consume("(");
-        compileExpression();
-        consume(")");
+        String labelExp = newLabel("WHILE_EXP");
+        String labelEnd = newLabel("WHILE_END");
 
-        consume("{");
+        vmWriter.writeLabel(labelExp);
+        tokenizer.advance(); 
+        tokenizer.advance(); 
+        compileExpression();
+        tokenizer.advance(); 
+
+        vmWriter.writeArithmetic(VMWriter.Command.NOT);
+        vmWriter.writeIf(labelEnd);
+
+        tokenizer.advance(); 
         compileStatements();
-        consume("}");
-        closeTag("whileStatement");
+        tokenizer.advance(); 
+
+        vmWriter.writeGoto(labelExp);
+        vmWriter.writeLabel(labelEnd);
     }
 
     public void compileExpression() throws IOException 
     {
-        openTag("expression");
         compileTerm();
-
-        while (tokenizer.tokenType() == TokenType.SYMBOL && OP_SYMBOLS.contains(tokenizer.getCurrentToken())) 
-        {
-            writeCurrentToken(); 
+        while (tokenizer.tokenType() == TokenType.SYMBOL && "+-*/&|<>=".contains(tokenizer.getCurrentToken())) {
+            String op = tokenizer.getCurrentToken();
             tokenizer.advance();
             compileTerm();
+
+            switch (op) {
+                case "+" -> vmWriter.writeArithmetic(VMWriter.Command.ADD);
+                case "-" -> vmWriter.writeArithmetic(VMWriter.Command.SUB);
+                case "*" -> vmWriter.writeCall("Math.multiply", 2);
+                case "/" -> vmWriter.writeCall("Math.divide", 2);
+                case "&" -> vmWriter.writeArithmetic(VMWriter.Command.AND);
+                case "|" -> vmWriter.writeArithmetic(VMWriter.Command.OR);
+                case "<" -> vmWriter.writeArithmetic(VMWriter.Command.LT);
+                case ">" -> vmWriter.writeArithmetic(VMWriter.Command.GT);
+                case "=" -> vmWriter.writeArithmetic(VMWriter.Command.EQ);
+            }
         }
-        closeTag("expression");
     }
 
     public void compileTerm() throws IOException 
