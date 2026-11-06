@@ -253,24 +253,20 @@ public class CompilationEngine
 
     public void compileVarDec() throws IOException 
     {
-        openTag("varDec");
-        consume("var");
-
-        writeCurrentToken(); 
+        tokenizer.advance();
+        String type = tokenizer.getCurrentToken();
+        tokenizer.advance();
+        String name = tokenizer.getCurrentToken();
+        symbolTable.define(name, type, SymbolTable.Kind.VAR);
         tokenizer.advance();
 
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        while (tokenizer.getCurrentToken().equals(",")) 
-        {
-            consume(",");
-            writeCurrentToken(); 
+        while (tokenizer.getCurrentToken().equals(",")) {
+            tokenizer.advance();
+            name = tokenizer.getCurrentToken();
+            symbolTable.define(name, type, SymbolTable.Kind.VAR);
             tokenizer.advance();
         }
-
-        consume(";");
-        closeTag("varDec");
+        tokenizer.advance();
     }
 
     public void compileStatements() throws IOException 
@@ -424,51 +420,61 @@ public class CompilationEngine
 
     public void compileTerm() throws IOException 
     {
-        openTag("term");
-
         TokenType type = tokenizer.tokenType();
         String token = tokenizer.getCurrentToken();
 
-        if (type == TokenType.INT_CONST || type == TokenType.STRING_CONST) 
-        {
-            writeCurrentToken();
+        if (type == TokenType.INT_CONST) {
+            vmWriter.writePush(VMWriter.Segment.CONST, tokenizer.intVal());
             tokenizer.advance();
-        } else if (type == TokenType.KEYWORD && 
-                (token.equals("true") || token.equals("false") || token.equals("null") || token.equals("this"))) 
-                {
-            writeCurrentToken();
+        } else if (type == TokenType.STRING_CONST) {
+            String str = tokenizer.stringVal();
+            vmWriter.writePush(VMWriter.Segment.CONST, str.length());
+            vmWriter.writeCall("String.new", 1);
+            for (char c : str.toCharArray()) {
+                vmWriter.writePush(VMWriter.Segment.CONST, (int) c);
+                vmWriter.writeCall("String.appendChar", 2);
+            }
             tokenizer.advance();
-        } else if (token.equals("(")) 
-        {
-            consume("(");
+        } else if (type == TokenType.KEYWORD) {
+            switch (token) {
+                case "true" -> {
+                    vmWriter.writePush(VMWriter.Segment.CONST, 0);
+                    vmWriter.writeArithmetic(VMWriter.Command.NOT);
+                }
+                case "false", "null" -> vmWriter.writePush(VMWriter.Segment.CONST, 0);
+                case "this" -> vmWriter.writePush(VMWriter.Segment.POINTER, 0);
+            }
+            tokenizer.advance();
+        } else if (token.equals("(")) {
+            tokenizer.advance(); 
             compileExpression();
-            consume(")");
-        } else if (type == TokenType.SYMBOL && UNARY_OPS.contains(tokenizer.symbol())) 
-        {
-            writeCurrentToken(); 
+            tokenizer.advance(); 
+        } else if (type == TokenType.SYMBOL && (token.equals("-") || token.equals("~"))) {
+            char op = tokenizer.symbol();
             tokenizer.advance();
             compileTerm();
-        } else if (type == TokenType.IDENTIFIER) 
-        {
+            if (op == '-') vmWriter.writeArithmetic(VMWriter.Command.NEG);
+            else vmWriter.writeArithmetic(VMWriter.Command.NOT);
+        } else if (type == TokenType.IDENTIFIER) {
             String next = tokenizer.peekToken();
-            if ("[".equals(next)) 
-            { 
-                writeCurrentToken();
+            if ("[".equals(next)) {
+                String arrName = tokenizer.identifier();
                 tokenizer.advance();
-                consume("[");
+                tokenizer.advance(); 
                 compileExpression();
-                consume("]");
-            } else if ("(".equals(next) || ".".equals(next)) 
-            { 
+                tokenizer.advance(); 
+                vmWriter.writePush(getSegment(symbolTable.kindOf(arrName)), symbolTable.indexOf(arrName));
+                vmWriter.writeArithmetic(VMWriter.Command.ADD);
+                vmWriter.writePop(VMWriter.Segment.POINTER, 1);
+                vmWriter.writePush(VMWriter.Segment.THAT, 0);
+            } else if ("(".equals(next) || ".".equals(next)) {
                 compileSubroutineCall();
-            } else 
-            { 
-                writeCurrentToken();
+            } else {
+                String varName = tokenizer.identifier();
+                vmWriter.writePush(getSegment(symbolTable.kindOf(varName)), symbolTable.indexOf(varName));
                 tokenizer.advance();
             }
         }
-
-        closeTag("term");
     }
 
     private void compileSubroutineCall() throws IOException 
