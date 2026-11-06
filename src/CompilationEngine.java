@@ -133,6 +133,9 @@ public class CompilationEngine
             compileSubroutine();
             }
 
+            tokenizer.advance();
+            vmWriter.close();
+
         consume("}");
         closeTag("class");
         close();
@@ -161,6 +164,41 @@ public class CompilationEngine
 
     public void compileSubroutine() throws IOException 
     {
+        symbolTable.startSubroutine();
+        String subType = tokenizer.keyWord(); // constructor, function, method
+        tokenizer.advance();
+        tokenizer.advance(); // tipo de retorno
+        String subName = tokenizer.identifier();
+        tokenizer.advance();
+
+        if (subType.equals("method")) {
+            symbolTable.define("this", currentClassName, SymbolTable.Kind.ARG);
+        }
+
+        tokenizer.advance(); // '('
+        compileParameterList();
+        tokenizer.advance(); // ')'
+
+        tokenizer.advance(); // '{'
+        while (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("var")) {
+            compileVarDec();
+        }
+
+        int nLocals = symbolTable.varCount(SymbolTable.Kind.VAR);
+        vmWriter.writeFunction(currentClassName + "." + subName, nLocals);
+
+        if (subType.equals("constructor")) {
+            int nFields = symbolTable.varCount(SymbolTable.Kind.FIELD);
+            vmWriter.writePush(VMWriter.Segment.CONST, nFields);
+            vmWriter.writeCall("Memory.alloc", 1);
+            vmWriter.writePop(VMWriter.Segment.POINTER, 0);
+        } else if (subType.equals("method")) {
+            vmWriter.writePush(VMWriter.Segment.ARG, 0);
+            vmWriter.writePop(VMWriter.Segment.POINTER, 0);
+        }
+
+        compileStatements();
+        tokenizer.advance(); // '}'
         openTag("subroutineDec");
         writeCurrentToken(); 
         tokenizer.advance();
@@ -435,34 +473,52 @@ public class CompilationEngine
 
     private void compileSubroutineCall() throws IOException 
     {
-        writeCurrentToken(); 
+        String first = tokenizer.identifier();
         tokenizer.advance();
+        String funcName;
+        int nArgs = 0;
 
-        if (tokenizer.getCurrentToken().equals(".")) 
-        {
-            consume(".");
-            writeCurrentToken(); 
+        if (tokenizer.getCurrentToken().equals(".")) {
+            tokenizer.advance(); // '.'
+            String subName = tokenizer.identifier();
             tokenizer.advance();
+
+            SymbolTable.Kind kind = symbolTable.kindOf(first);
+            if (kind != SymbolTable.Kind.NONE) {
+                // Chamada de método em objeto: empurra a referência em this
+                vmWriter.writePush(getSegment(kind), symbolTable.indexOf(first));
+                funcName = symbolTable.typeOf(first) + "." + subName;
+                nArgs = 1;
+            } else {
+                // Chamada de função estática de outra classe
+                funcName = first + "." + subName;
+            }
+        } else {
+            // Método chamado internamente na própria classe
+            vmWriter.writePush(VMWriter.Segment.POINTER, 0);
+            funcName = currentClassName + "." + first;
+            nArgs = 1;
         }
 
-        consume("(");
-        compileExpressionList();
-        consume(")");
+        tokenizer.advance(); // '('
+        nArgs += compileExpressionList();
+        tokenizer.advance(); // ')'
+        vmWriter.writeCall(funcName, nArgs);
     }
 
-    public void compileExpressionList() throws IOException 
+    public int compileExpressionList() throws IOException 
     {
-        openTag("expressionList");
-        if (!tokenizer.getCurrentToken().equals(")")) 
-        {
+        int count = 0;
+        if (!tokenizer.getCurrentToken().equals(")")) {
             compileExpression();
-            while (tokenizer.getCurrentToken().equals(",")) 
-            {
-                consume(",");
+            count++;
+            while (tokenizer.getCurrentToken().equals(",")) {
+                tokenizer.advance();
                 compileExpression();
+                count++;
             }
         }
-        closeTag("expressionList");
+        return count;
     }
     private VMWriter.Segment getSegment(SymbolTable.Kind kind) {
         return switch (kind) {
