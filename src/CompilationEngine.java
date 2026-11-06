@@ -9,8 +9,10 @@ import java.util.Set;
 public class CompilationEngine 
 {
     private JackTokenizer tokenizer;
-    private FileWriter writer;
-    private int indentLevel = 0;
+    private VMWriter vmWriter;
+    private SymbolTable symbolTable;
+    private String currentClassName;
+    private int labelIndex = 0;
 
     private static final Set<String> OP_SYMBOLS = new HashSet<>(Arrays.asList(
             "+", "-", "*", "/", "&", "|", "<", ">", "="));
@@ -20,7 +22,8 @@ public class CompilationEngine
     public CompilationEngine(JackTokenizer tokenizer, File outputFile) throws IOException 
     {
         this.tokenizer = tokenizer;
-        this.writer = new FileWriter(outputFile);
+        this.writer = new VMWriter(outputFile);
+        this.symbolTable = new SymbolTable();
 
         if (tokenizer.hasMoreTokens()) 
         {
@@ -127,6 +130,23 @@ public class CompilationEngine
 
     public void compileClassVarDec() throws IOException 
     {
+        SymbolTable.Kind kind = tokenizer.keyWord().equals("static") ? SymbolTable.Kind.STATIC : SymbolTable.Kind.FIELD;
+        tokenizer.advance();
+
+        String type = tokenizer.getCurrentToken();
+        tokenizer.advance();
+
+        String name = tokenizer.getCurrentToken();
+        symbolTable.define(name, type, kind);
+        tokenizer.advance();
+
+        while (tokenizer.getCurrentToken().equals(",")) {
+            tokenizer.advance(); // consome ','
+            name = tokenizer.getCurrentToken();
+            symbolTable.define(name, type, kind);
+            tokenizer.advance();
+        }
+        tokenizer.advance(); // consome ';'
         openTag("classVarDec");
         writeCurrentToken(); 
         tokenizer.advance();
@@ -419,5 +439,18 @@ public class CompilationEngine
             }
         }
         closeTag("expressionList");
+    }
+    private VMWriter.Segment getSegment(SymbolTable.Kind kind) {
+        return switch (kind) {
+            case STATIC -> VMWriter.Segment.STATIC;
+            case FIELD -> VMWriter.Segment.THIS;
+            case ARG -> VMWriter.Segment.ARG;
+            case VAR -> VMWriter.Segment.LOCAL;
+            default -> throw new IllegalArgumentException("Kind desconhecido: " + kind);
+        };
+    }
+
+    private String newLabel(String prefix) {
+        return prefix + "_" + (labelIndex++);
     }
 }
