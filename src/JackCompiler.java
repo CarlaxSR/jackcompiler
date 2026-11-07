@@ -3,29 +3,25 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class JackCompiler {
-    public static void main(String[] args) {
-        if (args.length == 0) {
+    public static void main(String[] args) 
+    {
+        if (args.length == 0) 
+        {
             System.out.println("Uso: java JackCompiler <arquivo.jack ou diretorio> [saida.xml]");
             return;
         }
         File input = new File(args[0]);
-        
-        if (input.isFile() && input.getName().endsWith(".jack")) 
-        {
-            File output = (args.length >= 2)
-            ? new File(args[1])
-            : new File(input.getAbsolutePath().replaceAll("\\.jack$", "P.xml"));
+        if (input.isFile() && input.getName().endsWith(".jack")) {
+            File output = new File(input.getAbsolutePath().replaceAll("\\.jack$", ".vm"));
             processFile(input, output);
-        } 
-        
-        else if (input.isDirectory()) 
+        } else if (input.isDirectory()) 
         {
             File[] files = input.listFiles((dir, name) -> name.endsWith(".jack"));
             if (files != null) 
             {
                 for (File file : files) 
                 {
-                    File output = new File(file.getAbsolutePath().replaceAll("\\.jack$", "P.xml"));
+                    File output = new File(file.getAbsolutePath().replaceAll("\\.jack$", ".vm"));
                     processFile(file, output);
                 }
             }
@@ -34,14 +30,15 @@ public class JackCompiler {
 
     private static void processFile(File jackFile, File outputFile) 
     {
-        try {
+        try 
+        {
             JackTokenizer tokenizer = new JackTokenizer(jackFile);
             CompilationEngine engine = new CompilationEngine(tokenizer, outputFile);
             engine.compileClass();
-            System.out.println("Parser gerado com sucesso: " + outputFile.getAbsolutePath());
-        } 
-        catch (IOException e) {
-            System.err.println("Erro ao processar " + jackFile.getName() + ": " + e.getMessage());
+            System.out.println("Código VM gerado: " + outputFile.getAbsolutePath());
+        } catch (IOException e) 
+        {
+            System.err.println("Erro ao compilar " + jackFile.getName() + ": " + e.getMessage());
         }
     }
 

@@ -153,7 +153,8 @@ public class CompilationEngine
         symbolTable.define(name, type, kind);
         tokenizer.advance();
 
-        while (tokenizer.getCurrentToken().equals(",")) {
+        while (tokenizer.getCurrentToken().equals(",")) 
+        {
             tokenizer.advance(); // consome ','
             name = tokenizer.getCurrentToken();
             symbolTable.define(name, type, kind);
@@ -171,7 +172,8 @@ public class CompilationEngine
         String subName = tokenizer.identifier();
         tokenizer.advance();
 
-        if (subType.equals("method")) {
+        if (subType.equals("method")) 
+        {
             symbolTable.define("this", currentClassName, SymbolTable.Kind.ARG);
         }
 
@@ -180,19 +182,23 @@ public class CompilationEngine
         tokenizer.advance(); // ')'
 
         tokenizer.advance(); // '{'
-        while (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("var")) {
+        while (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("var")) 
+        {
             compileVarDec();
         }
 
         int nLocals = symbolTable.varCount(SymbolTable.Kind.VAR);
         vmWriter.writeFunction(currentClassName + "." + subName, nLocals);
 
-        if (subType.equals("constructor")) {
+        if (subType.equals("constructor")) 
+        {
             int nFields = symbolTable.varCount(SymbolTable.Kind.FIELD);
             vmWriter.writePush(VMWriter.Segment.CONST, nFields);
             vmWriter.writeCall("Memory.alloc", 1);
             vmWriter.writePop(VMWriter.Segment.POINTER, 0);
-        } else if (subType.equals("method")) {
+        } 
+        else if (subType.equals("method")) 
+        {
             vmWriter.writePush(VMWriter.Segment.ARG, 0);
             vmWriter.writePop(VMWriter.Segment.POINTER, 0);
         }
@@ -298,7 +304,8 @@ public class CompilationEngine
         tokenizer.advance();
 
         boolean isArray = false;
-        if (tokenizer.getCurrentToken().equals("[")) {
+        if (tokenizer.getCurrentToken().equals("[")) 
+        {
             isArray = true;
             tokenizer.advance(); 
             compileExpression();
@@ -311,12 +318,15 @@ public class CompilationEngine
         compileExpression();
         tokenizer.advance(); 
 
-        if (isArray) {
+        if (isArray) 
+        {
             vmWriter.writePop(VMWriter.Segment.TEMP, 0);
             vmWriter.writePop(VMWriter.Segment.POINTER, 1);
             vmWriter.writePush(VMWriter.Segment.TEMP, 0);
             vmWriter.writePop(VMWriter.Segment.THAT, 0);
-        } else {
+        } 
+        else 
+        {
             vmWriter.writePop(getSegment(symbolTable.kindOf(varName)), symbolTable.indexOf(varName));
         }
     }
@@ -333,7 +343,8 @@ public class CompilationEngine
     public void compileReturn() throws IOException 
     {
         tokenizer.advance(); 
-        if (!tokenizer.getCurrentToken().equals(";")) {
+        if (!tokenizer.getCurrentToken().equals(";")) 
+        {
             compileExpression();
         } else {
             vmWriter.writePush(VMWriter.Segment.CONST, 0);
@@ -361,7 +372,8 @@ public class CompilationEngine
         compileStatements();
         tokenizer.advance(); 
 
-        if (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("else")) {
+        if (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("else")) 
+        {
             vmWriter.writeGoto(labelEnd);
             vmWriter.writeLabel(labelFalse);
             tokenizer.advance(); 
@@ -369,7 +381,9 @@ public class CompilationEngine
             compileStatements();
             tokenizer.advance(); 
             vmWriter.writeLabel(labelEnd);
-        } else {
+        } 
+        else 
+        {
             vmWriter.writeLabel(labelFalse);
         }
     }
@@ -399,12 +413,14 @@ public class CompilationEngine
     public void compileExpression() throws IOException 
     {
         compileTerm();
-        while (tokenizer.tokenType() == TokenType.SYMBOL && "+-*/&|<>=".contains(tokenizer.getCurrentToken())) {
+        while (tokenizer.tokenType() == TokenType.SYMBOL && "+-*/&|<>=".contains(tokenizer.getCurrentToken())) 
+        {
             String op = tokenizer.getCurrentToken();
             tokenizer.advance();
             compileTerm();
 
-            switch (op) {
+            switch (op) 
+            {
                 case "+" -> vmWriter.writeArithmetic(VMWriter.Command.ADD);
                 case "-" -> vmWriter.writeArithmetic(VMWriter.Command.SUB);
                 case "*" -> vmWriter.writeCall("Math.multiply", 2);
@@ -423,10 +439,13 @@ public class CompilationEngine
         TokenType type = tokenizer.tokenType();
         String token = tokenizer.getCurrentToken();
 
-        if (type == TokenType.INT_CONST) {
+        if (type == TokenType.INT_CONST) 
+        {
             vmWriter.writePush(VMWriter.Segment.CONST, tokenizer.intVal());
             tokenizer.advance();
-        } else if (type == TokenType.STRING_CONST) {
+        } 
+        else if (type == TokenType.STRING_CONST) 
+        {
             String str = tokenizer.stringVal();
             vmWriter.writePush(VMWriter.Segment.CONST, str.length());
             vmWriter.writeCall("String.new", 1);
@@ -435,9 +454,13 @@ public class CompilationEngine
                 vmWriter.writeCall("String.appendChar", 2);
             }
             tokenizer.advance();
-        } else if (type == TokenType.KEYWORD) {
-            switch (token) {
-                case "true" -> {
+        } 
+        else if (type == TokenType.KEYWORD) 
+        {
+            switch (token) 
+            {
+                case "true" -> 
+                {
                     vmWriter.writePush(VMWriter.Segment.CONST, 0);
                     vmWriter.writeArithmetic(VMWriter.Command.NOT);
                 }
@@ -445,33 +468,44 @@ public class CompilationEngine
                 case "this" -> vmWriter.writePush(VMWriter.Segment.POINTER, 0);
             }
             tokenizer.advance();
-        } else if (token.equals("(")) {
+        } 
+        else if (token.equals("(")) 
+        {
             tokenizer.advance(); 
             compileExpression();
             tokenizer.advance(); 
-        } else if (type == TokenType.SYMBOL && (token.equals("-") || token.equals("~"))) {
+        } 
+        else if (type == TokenType.SYMBOL && (token.equals("-") || token.equals("~"))) 
+        {
             char op = tokenizer.symbol();
             tokenizer.advance();
             compileTerm();
             if (op == '-') vmWriter.writeArithmetic(VMWriter.Command.NEG);
             else vmWriter.writeArithmetic(VMWriter.Command.NOT);
-        } else if (type == TokenType.IDENTIFIER) {
+        } 
+        else if (type == TokenType.IDENTIFIER) 
+        {
             String next = tokenizer.peekToken();
-            if ("[".equals(next)) {
+            if ("[".equals(next)) 
+            {
                 String arrName = tokenizer.identifier();
                 tokenizer.advance();
-                tokenizer.advance(); 
+                tokenizer.advance();
                 compileExpression();
                 tokenizer.advance(); 
                 vmWriter.writePush(getSegment(symbolTable.kindOf(arrName)), symbolTable.indexOf(arrName));
                 vmWriter.writeArithmetic(VMWriter.Command.ADD);
                 vmWriter.writePop(VMWriter.Segment.POINTER, 1);
                 vmWriter.writePush(VMWriter.Segment.THAT, 0);
-            } else if ("(".equals(next) || ".".equals(next)) {
+            } 
+            else if ("(".equals(next) || ".".equals(next)) 
+            {
                 compileSubroutineCall();
-            } else {
-                String varName = tokenizer.identifier();
-                vmWriter.writePush(getSegment(symbolTable.kindOf(varName)), symbolTable.indexOf(varName));
+            } 
+            else 
+            {
+                String varName = tokenizer.identifier(); 
+                vmWriter.writePush(getSegment(symbolTable.kindOf(varName)), symbolTable.indexOf(varName)); 
                 tokenizer.advance();
             }
         }
