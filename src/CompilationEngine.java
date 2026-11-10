@@ -1,6 +1,4 @@
-
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -13,13 +11,9 @@ public class CompilationEngine
     private SymbolTable symbolTable;
     private String currentClassName;
     private int labelIndex = 0;
-    private FileWriter writer;
-    private int indentLevel = 0;
 
     private static final Set<String> OP_SYMBOLS = new HashSet<>(Arrays.asList(
             "+", "-", "*", "/", "&", "|", "<", ">", "="));
-
-    private static final Set<Character> UNARY_OPS = new HashSet<>(Arrays.asList('-', '~'));
 
     public CompilationEngine(JackTokenizer tokenizer, File outputFile) throws IOException 
     {
@@ -33,58 +27,6 @@ public class CompilationEngine
         }
     }
 
-    private void writeIndent() throws IOException 
-    {
-        if (writer == null) return;
-        for (int i = 0; i < indentLevel; i++) 
-        {
-            writer.write("  ");
-        }
-    }
-
-    private void openTag(String tag) throws IOException 
-    {
-        if (writer == null) return;
-        writeIndent();
-        writer.write("<" + tag + ">\n");
-        indentLevel++;
-    }
-
-    private void closeTag(String tag) throws IOException 
-    {
-        if (writer == null) return;
-        indentLevel--;
-        writeIndent();
-        writer.write("</" + tag + ">\n");
-    }
-
-    private String escapeXml(String val) 
-    {
-        return switch (val) 
-        {
-            case "<" -> "&lt;";
-            case ">" -> "&gt;";
-            case "&" -> "&amp;";
-            case "\"" -> "&quot;";
-            default -> val;
-        };
-    }
-
-    private void writeCurrentToken() throws IOException 
-    {
-        if (writer == null) return;
-        TokenType type = tokenizer.tokenType();
-        writeIndent();
-        switch (type) 
-        {
-            case KEYWORD -> writer.write("<keyword> " + tokenizer.keyWord() + " </keyword>\n");
-            case SYMBOL -> writer.write("<symbol> " + escapeXml(String.valueOf(tokenizer.symbol())) + " </symbol>\n");
-            case IDENTIFIER -> writer.write("<identifier> " + tokenizer.identifier() + " </identifier>\n");
-            case INT_CONST -> writer.write("<integerConstant> " + tokenizer.intVal() + " </integerConstant>\n");
-            case STRING_CONST -> writer.write("<stringConstant> " + tokenizer.stringVal() + " </stringConstant>\n");
-        }
-    }
-
     private void consume(String expected) throws IOException 
     {
         if (!tokenizer.getCurrentToken().equals(expected)) 
@@ -92,7 +34,6 @@ public class CompilationEngine
             throw new RuntimeException(
                     "Erro Sintático: Esperava '" + expected + "', mas recebeu '" + tokenizer.getCurrentToken() + "'");
         }
-        writeCurrentToken();
         if (tokenizer.hasMoreTokens()) 
         {
             tokenizer.advance();
@@ -105,39 +46,28 @@ public class CompilationEngine
         {
             vmWriter.close();
         }
-        if (writer != null) 
-        {
-            writer.close();
-        }
     }
 
     public void compileClass() throws IOException 
     {
-        openTag("class");
         consume("class");
-
-        writeCurrentToken(); 
+        currentClassName = tokenizer.identifier();
         tokenizer.advance();
-
         consume("{");
 
         while (tokenizer.tokenType() == TokenType.KEYWORD && 
             (tokenizer.keyWord().equals("static") || tokenizer.keyWord().equals("field"))) 
-            {
+        {
             compileClassVarDec();
-            }
+        }
 
         while (tokenizer.tokenType() == TokenType.KEYWORD && 
             (tokenizer.keyWord().equals("constructor") || tokenizer.keyWord().equals("function") || tokenizer.keyWord().equals("method"))) 
-            {
+        {
             compileSubroutine();
-            }
-
-            tokenizer.advance();
-            vmWriter.close();
+        }
 
         consume("}");
-        closeTag("class");
         close();
     }
 
@@ -160,7 +90,7 @@ public class CompilationEngine
             symbolTable.define(name, type, kind);
             tokenizer.advance();
         }
-        tokenizer.advance(); // consome ';'
+        consume(";");
     }
 
     public void compileSubroutine() throws IOException 
@@ -205,79 +135,51 @@ public class CompilationEngine
 
         compileStatements();
         tokenizer.advance(); // '}'
-        openTag("subroutineDec");
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        writeCurrentToken(); 
-        tokenizer.advance();
-
-        consume("(");
-        compileParameterList();
-        consume(")");
-
-        openTag("subroutineBody");
-        consume("{");
-
-        while (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("var")) 
-        {
-            compileVarDec();
-        }
-
-        compileStatements(); 
-
-        consume("}");
-        closeTag("subroutineBody");
-        closeTag("subroutineDec");
     }
 
     public void compileParameterList() throws IOException 
     {
-        openTag("parameterList");
         if (!tokenizer.getCurrentToken().equals(")")) 
         {
-            writeCurrentToken(); 
+            String type = tokenizer.getCurrentToken();
             tokenizer.advance();
-
-            writeCurrentToken(); 
+            String name = tokenizer.getCurrentToken();
+            symbolTable.define(name, type, SymbolTable.Kind.ARG);
             tokenizer.advance();
 
             while (tokenizer.getCurrentToken().equals(",")) 
             {
-                consume(",");
-                writeCurrentToken(); 
+                tokenizer.advance(); // consome ','
+                type = tokenizer.getCurrentToken();
                 tokenizer.advance();
-                writeCurrentToken(); 
+                name = tokenizer.getCurrentToken();
+                symbolTable.define(name, type, SymbolTable.Kind.ARG);
                 tokenizer.advance();
             }
         }
-        closeTag("parameterList");
     }
 
     public void compileVarDec() throws IOException 
     {
-        tokenizer.advance();
+        tokenizer.advance(); // consome 'var'
         String type = tokenizer.getCurrentToken();
         tokenizer.advance();
         String name = tokenizer.getCurrentToken();
         symbolTable.define(name, type, SymbolTable.Kind.VAR);
         tokenizer.advance();
 
-        while (tokenizer.getCurrentToken().equals(",")) {
+        while (tokenizer.getCurrentToken().equals(",")) 
+        {
             tokenizer.advance();
             name = tokenizer.getCurrentToken();
             symbolTable.define(name, type, SymbolTable.Kind.VAR);
             tokenizer.advance();
         }
-        tokenizer.advance();
+        consume(";");
     }
 
     public void compileStatements() throws IOException 
     {
-        openTag("statements");
         while (tokenizer.tokenType() == TokenType.KEYWORD) 
         {
             String kw = tokenizer.keyWord();
@@ -286,20 +188,18 @@ public class CompilationEngine
                 case "let" -> compileLet();
                 case "do" -> compileDo();
                 case "return" -> compileReturn();
-                case "if" -> compileIf();       // implementar no próximo commit
-                case "while" -> compileWhile(); // implementar no próximo commit
+                case "if" -> compileIf();
+                case "while" -> compileWhile();
                 default -> {
-                    closeTag("statements");
                     return;
                 }
             }
         }
-        closeTag("statements");
     }
 
     public void compileLet() throws IOException 
     {
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome 'let'
         String varName = tokenizer.identifier();
         tokenizer.advance();
 
@@ -314,9 +214,9 @@ public class CompilationEngine
             vmWriter.writeArithmetic(VMWriter.Command.ADD);
         }
 
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome '='
         compileExpression();
-        tokenizer.advance(); 
+        consume(";");
 
         if (isArray) 
         {
@@ -333,11 +233,10 @@ public class CompilationEngine
 
     public void compileDo() throws IOException 
     {
-        openTag("doStatement");
-        consume("do");
+        tokenizer.advance(); // consome 'do'
         compileSubroutineCall();
         consume(";");
-        closeTag("doStatement");
+        vmWriter.writePop(VMWriter.Segment.TEMP, 0);
     }
 
     public void compileReturn() throws IOException 
@@ -349,7 +248,7 @@ public class CompilationEngine
         } else {
             vmWriter.writePush(VMWriter.Segment.CONST, 0);
         }
-        tokenizer.advance(); 
+        consume(";");
         vmWriter.writeReturn();
     }
 
@@ -359,27 +258,27 @@ public class CompilationEngine
         String labelFalse = newLabel("IF_FALSE");
         String labelEnd = newLabel("IF_END");
 
-        tokenizer.advance(); 
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome 'if'
+        tokenizer.advance(); // consome '('
         compileExpression();
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome ')'
 
         vmWriter.writeIf(labelTrue);
         vmWriter.writeGoto(labelFalse);
         vmWriter.writeLabel(labelTrue);
 
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome '{'
         compileStatements();
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome '}'
 
         if (tokenizer.tokenType() == TokenType.KEYWORD && tokenizer.keyWord().equals("else")) 
         {
             vmWriter.writeGoto(labelEnd);
             vmWriter.writeLabel(labelFalse);
-            tokenizer.advance(); 
-            tokenizer.advance(); 
+            tokenizer.advance(); // consome 'else'
+            tokenizer.advance(); // consome '{'
             compileStatements();
-            tokenizer.advance(); 
+            tokenizer.advance(); // consome '}'
             vmWriter.writeLabel(labelEnd);
         } 
         else 
@@ -394,17 +293,17 @@ public class CompilationEngine
         String labelEnd = newLabel("WHILE_END");
 
         vmWriter.writeLabel(labelExp);
-        tokenizer.advance(); 
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome 'while'
+        tokenizer.advance(); // consome '('
         compileExpression();
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome ')'
 
         vmWriter.writeArithmetic(VMWriter.Command.NOT);
         vmWriter.writeIf(labelEnd);
 
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome '{'
         compileStatements();
-        tokenizer.advance(); 
+        tokenizer.advance(); // consome '}'
 
         vmWriter.writeGoto(labelExp);
         vmWriter.writeLabel(labelEnd);
@@ -413,7 +312,7 @@ public class CompilationEngine
     public void compileExpression() throws IOException 
     {
         compileTerm();
-        while (tokenizer.tokenType() == TokenType.SYMBOL && "+-*/&|<>=".contains(tokenizer.getCurrentToken())) 
+        while (tokenizer.tokenType() == TokenType.SYMBOL && OP_SYMBOLS.contains(tokenizer.getCurrentToken())) 
         {
             String op = tokenizer.getCurrentToken();
             tokenizer.advance();
@@ -487,7 +386,7 @@ public class CompilationEngine
         {
             String next = tokenizer.peekToken();
             if ("[".equals(next)) 
-            {
+            { 
                 String arrName = tokenizer.identifier();
                 tokenizer.advance();
                 tokenizer.advance();
@@ -560,6 +459,7 @@ public class CompilationEngine
         }
         return count;
     }
+
     private VMWriter.Segment getSegment(SymbolTable.Kind kind) {
         return switch (kind) {
             case STATIC -> VMWriter.Segment.STATIC;
